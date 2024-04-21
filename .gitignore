@@ -66,3 +66,5 @@ next-env.d.ts
 .vscode
 
 **.firebase*
+
+google.json
