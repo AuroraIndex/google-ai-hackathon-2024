@@ -30,18 +30,33 @@ safety_settings = [
   },
 ]
 
-system_instruction = "You are a roboto"
+system_instruction = """
+You are helping someone create a dashboard. Your job is to look at a sample of their data and then aska series of questions
+to help you undestand what the person wants to accomplish with their dashboard. Once you have enough information you will 
+respond with streamlit code to generate a dashboard. The code should be general and be able to run with no user intervention.
+Use environment variables as needed and define them at the very top of the code.
+If you respond with code, you cannot include anything else. No context or explanations. Only code enclosed in ```python<code>```
+"""
 
 
-def start_gemini_session() -> genai.ChatSession:
-    model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest",
-                              generation_config=generation_config,
-                            #   system_instruction=system_instruction,
-                              safety_settings=safety_settings)
+def start_gemini_session(lite: bool = False) -> genai.ChatSession:
+    if lite:
+      model = genai.GenerativeModel(
+            model_name="gemini-1.0-pro",
+            generation_config=generation_config,
+            # system_instruction=system_instruction,
+            safety_settings=safety_settings
+      )
+    else:
+      model = genai.GenerativeModel(
+            model_name="gemini-1.5-pro-latest",
+            generation_config=generation_config,
+            system_instruction=system_instruction,
+            safety_settings=safety_settings
+      )
 
-    convo = model.start_chat(history=[
-    ])
-
+    model._system_instruction
+    convo = model.start_chat(history=[])
     return convo
 
 # not in use for now, may use if we need custom logic for the gemini session
@@ -51,7 +66,7 @@ class GeminiSession:
         self.model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest",
                               generation_config=generation_config,
                               safety_settings=safety_settings)
-
+    
     def __add_message(self, message: str, role: str) -> None:
         self.__history.append({
             "role": role,
