@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+        <style>
+            .form {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            };
+        </style>
+        
+    </head>
+    <body>
+        <div>
+            <h1>WebSocket Chat</h1>
+            <form action="" onsubmit="sendMessage(event)" class="form">
+                <input type="text" id="messageText" autocomplete="off"/>
+                <input type="file" id="inFile" />
+                <button>Send</button>
+            </form>
+            <ul id='messages'>
+            </ul>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script>
+            var ws = new WebSocket("ws://localhost:8000/ws");
+            ws.onmessage = function(event) {
+                var messages = document.getElementById('messages');
+                var message = document.createElement('li');
+                var content = document.createElement('div');
+                content.innerHTML = marked.parse(event.data)
+                message.appendChild(content);
+                messages.appendChild(message);
+            };
+            function sendMessage(event) {
+                event.preventDefault()
+                var input = document.getElementById("messageText");
+                var fileInput = document.getElementById("inFile");
+                var file = fileInput.files[0];
+                if (file) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        var data = e.target.result;
+                        ws.send(data);
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    ws.send(input.value);
+                }
+
+                input.value = '';
+                event.preventDefault();
+            }
+        </script>
+    </body>
+</html>
+"""
