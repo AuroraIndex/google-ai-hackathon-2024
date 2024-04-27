@@ -4,3 +4,7 @@ python-dotenv
 tenacity
 google-generativeai
 google-cloud-storage
+firebase-admin
+pandas
+streamlit
+plotly
