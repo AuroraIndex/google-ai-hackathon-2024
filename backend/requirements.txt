@@ -8,3 +8,5 @@ firebase-admin
 pandas
 streamlit
 plotly
+matplotlib
+seaborn
