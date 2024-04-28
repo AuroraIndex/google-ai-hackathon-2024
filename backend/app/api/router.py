@@ -1,7 +1,5 @@
-from fastapi import WebSocket, APIRouter, WebSocketException, WebSocketDisconnect
-from typing import List
+from fastapi import WebSocket, APIRouter
 
-from app.core.genai.gemini_wrapper import start_gemini_session
 from app.core.websocket import WebSocketSession
 
 router = APIRouter()
