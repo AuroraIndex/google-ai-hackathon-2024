@@ -63,6 +63,9 @@ class WebSocketSession:
                     self.__code._extract(resp)
                     await self.websocket.send_text(resp)
                     await self.__code._validate(self.__data.head(n=2))
+                    # on updates, clean up the dashboard before relaunching
+                    if self.dash_process:
+                        self.dash_process.terminate()
                     self.__curr_revision += 1
                     self._save_code()
                     self._launch_dashboard()        
