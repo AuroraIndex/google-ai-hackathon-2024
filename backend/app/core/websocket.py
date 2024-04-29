@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from time import time
 import subprocess
-import sys
+import json
 
 from app.core.genai.gemini_wrapper import start_gemini_session
 from app.core.database import db, storage
@@ -32,15 +32,14 @@ class WebSocketSession:
         self.__code = Code()
         self.path = BASE_DATA_PATH + f"/{self.created}"
         self.port = ports.pop(0)
-        self.process = None
+        self.dash_process = None
         os.makedirs(self.path, exist_ok=True)
-
-
+ 
     async def accept_connection(self) -> None:
         await self.websocket.accept()
 
     async def handle_disconnect(self) -> None:
-        self.process.terminate()
+        self.dash_process.terminate()
         await self._store_revision()
         ports.append(self.port)
         await self.websocket.close()
@@ -55,7 +54,11 @@ class WebSocketSession:
                 elif "bytes" in ws_data:
                     data = ws_data["bytes"]
                     resp = await self._process_file(data)
-
+                elif "json" in ws_data:
+                    self._process_signal(ws_data)
+                else:
+                    resp = "Invalid message format"
+    
                 if resp.startswith("```python"):
                     self.__code._extract(resp)
                     await self.websocket.send_text(resp)
@@ -108,19 +111,35 @@ class WebSocketSession:
     async def _load_revision(self):
         pass
 
+    async def _process_signal(self, ws_data):
+        data = json.loads(ws_data)
+        # check what they want, either switch revisions or something idk
+
 
     def _launch_dashboard(self) -> None:
-        data_path = os.path.join(self.path, "data.csv")
-        dashboard_path = os.path.join(self.path, f"rev{self.__curr_revision}.py")
+        base_path = self.path #self.path, "data.csv")
+        dashboard_path = f"rev{self.__curr_revision}.py"  #os.path.join(self.path, f"rev{self.__curr_revision}.py")
         port = self.port
-        self.process = subprocess.Popen(['bash', RUNNER_PATH, data_path, dashboard_path, port])
+        cmd = ['bash', RUNNER_PATH, base_path, dashboard_path, port]
+        self.dash_process = subprocess.Popen(cmd)
 
     def _save_code(self) -> None:    
         out_path = os.path.join(self.path, f"rev{self.__curr_revision}.py")
         with open(out_path, "w") as file:
             file.write(self.__code.code)
 
-
+    def _change_rev(self, rev: int) -> None:
+        tmp = self.__curr_revision
+        try:
+            self.dash_process.terminate()
+            self.__curr_revision = rev
+            self._launch_dashboard()
+        except FileNotFoundError as e:
+            logger.info(e)
+            self.websocket.send_text("Revision not found!")
+            self.__curr_revision = tmp
+    
+    
 class Code:
     def __init__(self) -> None:
         self.code: str | None = None
