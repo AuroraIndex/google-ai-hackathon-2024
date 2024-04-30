@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { MessageSquareMore } from 'lucide-react';
 import Chat from "@/components/Chat";
 
+
+const WS_BASE_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL;
+const WS_URL = process.env.NEXT_PUBLIC_WB_SOCKET_URL;
+const WAIT_TIME = process.env.NEXT_PUBLIC_WAIT_TIME;
+
 export default function Home() {
   const [enableSend, setEnableSend] = useState(true);
   const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -30,12 +35,16 @@ export default function Home() {
 
   useEffect(() => {
     if (csv && socket === null) {
-      const socket = new WebSocket('ws://localhost:8000/ws');
+      const socket = new WebSocket(WS_URL || 'ws://localhost:8000/ws');
   
     socket.addEventListener('message', (event) => {
-      if (event.data.startsWith('http')) {
-        console.log(event.data);
-        setUrl(event.data);
+      if (event.data.startsWith('PORT')) {
+        console.log(WS_BASE_URL + ":" + event.data.split(":")[1]);
+        setTimeout(() => {
+          console.log("setting url");
+          setUrl(WS_BASE_URL + ":" + event.data.split(":")[1]);
+        }, parseInt(WAIT_TIME || "5000"));
+
       } else {
         setMessages((prev) => [...prev, {
           "sender": "bot",
@@ -60,7 +69,6 @@ export default function Home() {
   
     // Cleanup function to close socket when component unmounts
     return () => {
-      console.log('test')
       socket.close();
     };
     }
