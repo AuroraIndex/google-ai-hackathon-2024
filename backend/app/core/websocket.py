@@ -47,30 +47,35 @@ class WebSocketSession:
     async def listen_and_serve(self) -> None:
         try:
             while True:
-                ws_data = await self.websocket.receive()
-                if "text" in ws_data:
-                    data = ws_data["text"]
-                    resp = await self._process_chat(data)
-                elif "bytes" in ws_data:
-                    data = ws_data["bytes"]
-                    resp = await self._process_file(data)
-                elif "json" in ws_data:
-                    self._process_signal(ws_data)
-                else:
-                    resp = "Invalid message format"
-    
-                if resp.startswith("```python"):
-                    self.__code._extract(resp)
-                    await self.websocket.send_text(resp)
-                    await self.__code._validate(self.__data.head(n=2))
-                    # on updates, clean up the dashboard before relaunching
-                    if self.dash_process:
-                        self.dash_process.terminate()
-                    self.__curr_revision += 1
-                    self._save_code()
-                    self._launch_dashboard()        
-                    await self.websocket.send_text(self.__code.code) # replace with running deploy pipeline
-                await self.websocket.send_text(resp)
+                try:
+                    ws_data = await self.websocket.receive()
+                    if "text" in ws_data:
+                        data = ws_data["text"]
+                        resp = await self._process_chat(data)
+                    elif "bytes" in ws_data:
+                        data = ws_data["bytes"]
+                        resp = await self._process_file(data)
+                    elif "json" in ws_data:
+                        self._process_signal(ws_data)
+                    else:
+                        resp = "Invalid message format"
+        
+                    if resp.startswith("```python"):
+                        self.__code._extract(resp)
+                        # await self.websocket.send_text(resp)
+                        await self.__code._validate(self.__data.head(n=2))
+                        # on updates, clean up the dashboard before relaunching
+                        if self.dash_process:
+                            self.dash_process.terminate()
+                        self.__curr_revision += 1
+                        self._save_code()
+                        self._launch_dashboard()
+                        await self.websocket.send_text(f'http://localhost:{self.port}')        
+                        # await self.websocket.send_text(self.__code.code) # replace with running deploy pipeline
+                    else: 
+                        await self.websocket.send_text(resp)
+                except Exception as e:
+                    await self.websocket.send_text(f"I do know what went wrong. Ask me again!")
         except Exception as e:
             logger.exception(e)
         finally:
