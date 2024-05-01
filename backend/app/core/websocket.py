@@ -70,7 +70,7 @@ class WebSocketSession:
                         self.__curr_revision += 1
                         self._save_code()
                         self._launch_dashboard()
-                        await self.websocket.send_text(f'http://localhost:{self.port}')        
+                        await self.websocket.send_text(f'PORT:{self.port}')        
                         # await self.websocket.send_text(self.__code.code) # replace with running deploy pipeline
                     else: 
                         await self.websocket.send_text(resp)
@@ -191,3 +191,6 @@ class Code:
 
     def _extract(self, text: str) -> None:
         self.code = text.removeprefix("```python").removesuffix("```")
+
+
+
