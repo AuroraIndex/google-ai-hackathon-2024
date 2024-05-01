@@ -39,7 +39,7 @@ class WebSocketSession:
         await self.websocket.accept()
 
     async def handle_disconnect(self) -> None:
-        self.dash_process.terminate()
+        self._stop_dashboard()
         await self._store_revision()
         ports.append(self.port)
         await self.websocket.close()
@@ -61,16 +61,16 @@ class WebSocketSession:
                         resp = "Invalid message format"
         
                     if resp.startswith("```python"):
-                        self.__code._extract(resp)
+                        self.__code.extract(resp)
                         # await self.websocket.send_text(resp)
-                        await self.__code._validate(self.__data.head(n=2))
+                        await self.__code.validate(self.__data.head(n=2))
                         # on updates, clean up the dashboard before relaunching
-                        if self.dash_process:
-                            self.dash_process.terminate()
+                        self._stop_dashboard()
                         self.__curr_revision += 1
                         self._save_code()
                         self._launch_dashboard()
-                        await self.websocket.send_text(f'PORT:{self.port}')        
+                        # await self.websocket.send_text(f'PORT:{self.port}')
+                        await self.websocket.send_json(data={"PORT":8501, "rev": self.__curr_revision})
                         # await self.websocket.send_text(self.__code.code) # replace with running deploy pipeline
                     else: 
                         await self.websocket.send_text(resp)
@@ -122,7 +122,8 @@ class WebSocketSession:
     async def _process_signal(self, ws_data):
         data = json.loads(ws_data)
         # check what they want, either switch revisions or something idk
-
+        if "rev" in data:
+            self._change_rev(data["rev"])
 
     def _launch_dashboard(self) -> None:
         base_path = self.path #self.path, "data.csv")
@@ -139,14 +140,18 @@ class WebSocketSession:
     def _change_rev(self, rev: int) -> None:
         tmp = self.__curr_revision
         try:
-            self.dash_process.terminate()
+            self._stop_dashboard()
             self.__curr_revision = rev
             self._launch_dashboard()
         except FileNotFoundError as e:
             logger.info(e)
             self.websocket.send_text("Revision not found!")
             self.__curr_revision = tmp
+            self._launch_dashboard()
     
+    def _stop_dashboard(self) -> None:
+        if self.dash_process:
+            self.dash_process.terminate()
     
 class Code:
     def __init__(self) -> None:
@@ -162,7 +167,8 @@ class Code:
             'seaborn': __import__('seaborn')
         }
 
-    async def _validate(self, preview: pd.DataFrame) -> None:
+    async def validate(self, preview: pd.DataFrame) -> None:
+        prev_error = self.__errors
         self._test()
         while self.__errors:
             logger.warning(self.__errors)
@@ -175,11 +181,12 @@ class Code:
                     ```
                     produced this error during execution: {self.__errors}.
                     Fix the code. Do not include anything else. No context or explanations. Only the corrected 
-                    code enclosed in ```python<code>``` For the data path, always use the env var CSV_PATH=os.getenv("CSV_PATH).
+                    code enclosed in ```python<code>``` For the data path, always use the env var CSV_PATH=os.getenv("CSV_PATH").
                     For reference heres a preview of their data {preview}. All columns in the dashboard must match these.
                     """
                 )
-                self._extract(resp.text)
+                self.extract(resp.text)
+                prev_error = self.__errors
                 self._test()
     
     def _test(self) -> None:
@@ -189,7 +196,7 @@ class Code:
         except Exception as e:
             self.__errors = e
 
-    def _extract(self, text: str) -> None:
+    def extract(self, text: str) -> None:
         self.code = text.removeprefix("```python").removesuffix("```")
 
 
