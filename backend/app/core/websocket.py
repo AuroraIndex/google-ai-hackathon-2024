@@ -147,6 +147,7 @@ class WebSocketSession:
             logger.info(e)
             self.websocket.send_text("Revision not found!")
             self.__curr_revision = tmp
+            self._launch_dashboard()
     
     def _stop_dashboard(self) -> None:
         if self.dash_process:
