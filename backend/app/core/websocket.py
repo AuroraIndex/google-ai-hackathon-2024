@@ -193,7 +193,10 @@ class Code:
             'streamlit': __import__('streamlit'),
             'plotly': __import__('plotly'),
             'matplotlib': __import__('matplotlib'),
-            'seaborn': __import__('seaborn')
+            'seaborn': __import__('seaborn'),
+            'pygwalker': __import__('pygwalker'),
+            'hiplot': __import__('hiplot'),
+            'streamlit-hub': __import__('streamlit-hub')
         }
 
     async def validate(self, preview: pd.DataFrame) -> None:
