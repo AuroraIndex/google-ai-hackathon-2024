@@ -57,7 +57,10 @@ class WebSocketSession:
                     ws_data = await self.websocket.receive()
                     if "text" in ws_data:
                         data = ws_data["text"]
-                        resp = await self._process_chat(data)
+                        if data.startswith('{'): 
+                            self._process_signal(ws_data) 
+                        else: 
+                            resp = await self._process_chat(data)
                     elif "bytes" in ws_data:
                         data = ws_data["bytes"]
                         resp = await self._process_file(data)
@@ -223,7 +226,15 @@ class Code:
             self.__errors = e
 
     def extract(self, text: str) -> None:
-        self.code = text.removeprefix("```python").removesuffix("```")
+        code = text.removeprefix("```python").removesuffix("```")
+        add_common_mistakes = """
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import streamlit as st
+import os
+        """
+        self.code = add_common_mistakes + code
 
 
 
