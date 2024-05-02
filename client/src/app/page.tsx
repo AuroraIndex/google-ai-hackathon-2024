@@ -6,18 +6,27 @@ import { useDropzone } from 'react-dropzone';
 import { Button } from "@/components/ui/button";
 import { MessageSquareMore } from 'lucide-react';
 import Chat from "@/components/Chat";
+import LoadingDashboard from "@/components/Loading";
+
+
+const WS_BASE_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL;
+const WS_URL = process.env.NEXT_PUBLIC_WB_SOCKET_URL;
+const WAIT_TIME = process.env.NEXT_PUBLIC_WAIT_TIME;
 
 export default function Home() {
-  const [enableSend, setEnableSend] = useState(true);
+  const [enableSend, setEnableSend] = useState(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [csv, setCsv] = useState<File | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [messages, setMessages] = useState<{sender: string, message: string}[]>([{
+  const [chatOpen, setChatOpen] = useState(true);
+  const [messages, setMessages] = useState<{ sender: string, message: string }[]>([{
     "sender": "bot",
-    "message": "Hello! Give me a brief explanation of what you are trying to achieve and what this data represents."
+    "message": "Hello! Let me pull up the data for you."
   }]);
 
-  const [url, setUrl] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(1);
+  const [maxIndex, setMaxIndex] = useState(1);
+
+  const [url, setUrl] = useState<string | null>(null);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     // @ts-ignore
@@ -30,42 +39,61 @@ export default function Home() {
 
   useEffect(() => {
     if (csv && socket === null) {
-      const socket = new WebSocket('ws://localhost:8000/ws');
-  
-    socket.addEventListener('message', (event) => {
-      if (event.data.startsWith('http')) {
+      const socket = new WebSocket(WS_URL || 'ws://localhost:8000/ws');
+
+      socket.addEventListener('message', (event) => {
         console.log(event.data);
-        setUrl(event.data);
-      } else {
-        setMessages((prev) => [...prev, {
-          "sender": "bot",
-          "message": event.data
-        }]);
+        
+        if (event.data.startsWith('{')) {
+          const data_dict = JSON.parse(event.data);
+          console.log(WS_BASE_URL + ":" + data_dict.PORT);
+          setTimeout(() => {
+            console.log("setting url");
+            setUrl(WS_BASE_URL + ":" + data_dict.PORT);
+            setCurrentIndex(data_dict.rev);
+            if (data_dict.rev > maxIndex) {
+              setMaxIndex(data_dict.rev);
+            }
+          }, parseInt(WAIT_TIME || "5000"));
+
+        } else {
+          setMessages((prev) => [...prev, {
+            "sender": "bot",
+            "message": event.data
+          }]);
+        }
         setEnableSend(true);
-      }
-    });
-  
-    socket.addEventListener('open', () => {
-      console.log('Connected to WebSocket');
-      if (csv) {
-        socket.send(csv);
-      }
-    });
-  
-    socket.addEventListener('close', () => {
-      console.log('Disconnected from WebSocket');
-    });
-  
-    setSocket(socket);
-  
-    // Cleanup function to close socket when component unmounts
-    return () => {
-      console.log('test')
-      socket.close();
-    };
+      });
+
+      socket.addEventListener('open', () => {
+        console.log('Connected to WebSocket');
+        if (csv) {
+          socket.send(csv);
+        }
+      });
+
+      socket.addEventListener('close', () => {
+        console.log('Disconnected from WebSocket');
+        const newsocket = new WebSocket(WS_URL || 'ws://localhost:8000/ws');
+        setSocket(newsocket);
+      });
+
+      setSocket(socket);
+
+      return () => {
+        socket.close();
+      };
     }
-  
+
   }, [csv]);
+
+  const handleChangeRev = () => {
+    socket?.send(JSON.stringify({"rev": currentIndex + 1}));
+  }
+
+  const handleDecrementRev = () => {
+    socket?.send(JSON.stringify({"rev": currentIndex - 1}));
+  }
 
 
 
@@ -84,38 +112,49 @@ export default function Home() {
                   {isDragActive ? "Drop the files here ..." : "Drag and drop files here"}
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">To get started!</p>
-              {csv && (
-                <p className="text-sm text-red-500">Please ensure the file is a CSV format.</p>
-              )}
+                {csv && (
+                  <p className="text-sm text-red-500">Please ensure the file is a CSV format.</p>
+                )}
               </div>
             </div>
 
           ) : (
             <>
-            <div className="w-[100vw] h-[94vh] p-0 m-0">
-            <iframe
-              src={url}
-              width="100%"
-              height="100%"
-            />
-            </div>
-            {!chatOpen ? 
-            <Button className="rounded-full w-[80px] h-[80px] absolute bottom-6 right-6 p-3" onClick={() => setChatOpen(true)}>
-              <MessageSquareMore className="h-[80%] w-[80%]"/>
-              <span className="sr-only" onClick={() => setChatOpen(true)}>Send</span>
-            </Button>: 
-            <Chat 
-            setOpen={setChatOpen} 
-            setMessages={setMessages} 
-            messages={messages} 
-            socket={socket}
-            setEnableSend={setEnableSend}
-            enableSend={enableSend}/>
-            }
+              <div className="w-[100vw] h-[94vh] p-0 m-0">
+                {url ? 
+                <>
+                <iframe
+                  src={url || ""}
+                  width="100%"
+                  height="100%"
+                /> 
+                <div className="absolute bottom-[2vh] left-[2vw]">
+                {currentIndex > 1 ? <Button onClick={handleChangeRev} className="w-[4vw] m-2">
+                  Previous
+                </Button> : null}
+                {currentIndex < maxIndex ? <Button onClick={handleDecrementRev} className="w-[4vw]">
+                  Next
+                </Button> : null}
+                </div>
+                </>
+                
+                :
+                  <LoadingDashboard />}
+              </div>
+              {!chatOpen ?
+                <Button className="rounded-full w-[80px] h-[80px] absolute bottom-6 right-6 p-3" onClick={() => setChatOpen(true)}>
+                  <MessageSquareMore className="h-[80%] w-[80%]" />
+                  <span className="sr-only" onClick={() => setChatOpen(true)}>Send</span>
+                </Button> :
+                <Chat
+                  setOpen={setChatOpen}
+                  setMessages={setMessages}
+                  messages={messages}
+                  socket={socket}
+                  setEnableSend={setEnableSend}
+                  enableSend={enableSend} />
+              }
             </>
-
-            
-            
           )
         }
 
