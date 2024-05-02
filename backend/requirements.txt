@@ -10,3 +10,4 @@ streamlit
 plotly
 matplotlib
 seaborn
+psutil
