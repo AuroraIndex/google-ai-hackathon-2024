@@ -6,6 +6,8 @@ Aurora GeminiLit is a platform that allows users to upload a CSV file and genera
 
 ## Instructions for running locally
 
+0. Prerequisites: `Docker`
+
 1. Copy the contents of `/backend/.env.example` into `/backend/.env`.
 
 2. Replace the placeholder `...` in the newly created `/backend/.env` file with your actual Gemini API key:
