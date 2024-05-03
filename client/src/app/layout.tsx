@@ -13,7 +13,7 @@ const fontSans = FontSans({
 
 
 export const metadata: Metadata = {
-  title: "Aurora Index",
+  title: "Aurora GeminiLit",
   description:
     "Automate dashboard creation with AI",
   // metadataBase: new URL(WEBSITE_URL),

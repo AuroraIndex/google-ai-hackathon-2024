@@ -14,7 +14,7 @@ from app.core.logger import logger
 
 ports = list(range(8501, 8599))
 
-BASE_DATA_PATH="./_server_data"
+BASE_DATA_PATH="../_server_data"
 RUNNER_PATH="./launch_streamlit.sh"
 # store messages and a reference to the current and all past iterations
 # on close/save -> save whole state to db. when user tries to load past session, pull the whole state from db
@@ -55,17 +55,19 @@ class WebSocketSession:
             while True:
                 try:
                     ws_data = await self.websocket.receive()
+                    # print(ws_data)
+                    resp = ""
                     if "text" in ws_data:
                         data = ws_data["text"]
                         if data.startswith('{'): 
-                            self._process_signal(ws_data) 
+                            await self._process_signal(data) 
                         else: 
                             resp = await self._process_chat(data)
                     elif "bytes" in ws_data:
                         data = ws_data["bytes"]
                         resp = await self._process_file(data)
                     elif "json" in ws_data:
-                        self._process_signal(ws_data)
+                        await self._process_signal(ws_data['json'])
                     else:
                         resp = "Invalid message format"
         
@@ -86,9 +88,10 @@ class WebSocketSession:
                         # await self.websocket.send_text(f'PORT:{self.port}')
                         await self.websocket.send_json(data={"PORT":self.port, "rev": self.__curr_revision})
                         # await self.websocket.send_text(self.__code.code) # replace with running deploy pipeline
-                    else: 
+                    elif resp != "": 
                         await self.websocket.send_text(resp)
                 except Exception as e:
+                    print(e)
                     await self.websocket.send_text(f"I don't know what went wrong. Ask me again!")
         except Exception as e:
             logger.exception(e)
@@ -135,10 +138,13 @@ class WebSocketSession:
         pass
 
     async def _process_signal(self, ws_data):
+        print(ws_data)
         data = json.loads(ws_data)
         # check what they want, either switch revisions or something idk
         if "rev" in data:
-            self._change_rev(data["rev"])
+            self._change_rev(int(data["rev"]))
+        await self.websocket.send_json(data={"PORT":self.port, "rev": self.__curr_revision})
+        
 
     def _launch_dashboard(self) -> None:
         base_path = self.path #self.path, "data.csv")
@@ -156,20 +162,29 @@ class WebSocketSession:
             file.write(self.__code.code)
 
     def _change_rev(self, rev: int) -> None:
+        tmp_code = self.__code.code
         tmp = self.__curr_revision
         try:
             self._stop_dashboard()
             self.__curr_revision = rev
+            rev_code_path = os.path.join(self.path, f"rev{self.__curr_revision}.py")
+            with open(rev_code_path, "r") as file:
+                self.__code.code = file.read()
+            # self.port = ports.pop(0)
             self._launch_dashboard()
+            
         except FileNotFoundError as e:
             logger.info(e)
             self.websocket.send_text("Revision not found!")
+            self.__code.code = tmp_code
             self.__curr_revision = tmp
+            self.port = ports.pop(0)
             self._launch_dashboard()
+
     
     def _stop_dashboard(self) -> None:
         if self.dash_process:
-            ports.append(self.port)
+            # ports.append(self.port)
             self.port = ports.pop(0)
             logger.info(f"stopping {self.dash_process.pid}")
             self._kill_process()

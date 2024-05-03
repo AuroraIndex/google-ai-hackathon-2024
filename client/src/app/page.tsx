@@ -94,6 +94,10 @@ export default function Home() {
 
       socket.addEventListener('close', () => {
         console.log('Disconnected from WebSocket');
+        setMessages((prev) => [...prev, {
+          "sender": "bot",
+          "message": "Disconnected, trying to reconnect..."
+        }]);
         const newsocket = new WebSocket(WS_URL || 'ws://localhost:8000/ws');
         setSocket(newsocket);
       });
@@ -149,10 +153,10 @@ export default function Home() {
                       height="100%"
                     />
                     <div className="absolute bottom-[2vh] left-[2vw]">
-                      {currentIndex > 1 ? <Button onClick={handleChangeRev} className="w-[4vw] m-2">
+                      {currentIndex > 1 ? <Button onClick={handleDecrementRev} className="w-[4vw] m-2">
                         Previous
                       </Button> : null}
-                      {currentIndex < maxIndex ? <Button onClick={handleDecrementRev} className="w-[4vw]">
+                      {currentIndex < maxIndex ? <Button onClick={handleChangeRev} className="w-[4vw]">
                         Next
                       </Button> : null}
                     </div>
