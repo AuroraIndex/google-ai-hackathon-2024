@@ -9,7 +9,7 @@ import json
 from time import sleep
 
 from app.core.genai.gemini_wrapper import start_gemini_session
-from app.core.database import db, storage
+# from app.core.database import db, storage
 from app.core.logger import logger
 
 ports = list(range(8501, 8599))
@@ -26,8 +26,8 @@ class WebSocketSession:
         self.websocket = websocket
         self.created = int(time())
         self.gemini = start_gemini_session()
-        self.__db = db
-        self.__blob = storage
+        # self.__db = db
+        # self.__blob = storage
         self.__revision_ids = []
         self.__curr_revision = 0
         self.__data: pd.DataFrame = None
@@ -210,8 +210,7 @@ class Code:
             'matplotlib': __import__('matplotlib'),
             'seaborn': __import__('seaborn'),
             'pygwalker': __import__('pygwalker'),
-            'hiplot': __import__('hiplot'),
-            'streamlit-hub': __import__('streamlit-hub')
+            'hiplot': __import__('hiplot')
         }
 
     async def validate(self, preview: pd.DataFrame) -> None:

@@ -9,9 +9,9 @@ import Chat from "@/components/Chat";
 import LoadingDashboard from "@/components/Loading";
 
 
-const WS_BASE_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL;
-const WS_URL = process.env.NEXT_PUBLIC_WB_SOCKET_URL;
-const WAIT_TIME = process.env.NEXT_PUBLIC_WAIT_TIME;
+const WS_BASE_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL || 'http://localhost:8000';
+const WS_URL = process.env.NEXT_PUBLIC_WB_SOCKET_URL || 'ws://localhost:8000/ws';
+const WAIT_TIME = process.env.NEXT_PUBLIC_WAIT_TIME  || '5000';
 const LOADING_SCREEN_WORDS = ["generating...", "thinking...", "processing...", "fetching...", "loading..."];
 const GENERIC_UPDATE_RESPONSES = [
   "Dashboard updated successfully.",
